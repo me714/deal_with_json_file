@@ -33,11 +33,15 @@ class PascalVOC2coco(object):
         self.width = 0
         self.ob = []
         self.area = 0
+        self.image_class = 0
 
         self.save_json()
 
     def data_transfer(self):
         for num, json_file in enumerate(self.xml):
+            img_name = os.path.split(json_file)[-2]
+            img_id = img_name.split('\\')[-2]
+            self.image_class = int(img_id)
 
             # 进度输出
             sys.stdout.write('\r>> Converting image %d/%d' % (
@@ -56,7 +60,7 @@ class PascalVOC2coco(object):
             # path=os.path.split(path)[0]
             obj_path = glob.glob(os.path.join(path, 'SegmentationObject', '*.png'))
             # print(obj_path)
-            with open(json_file, 'r') as fp:
+            with open(json_file, 'r', encoding='utf-8') as fp:
                 # print(fp)
                 flag = 0
                 for p in fp:
@@ -65,7 +69,7 @@ class PascalVOC2coco(object):
                     #     folder =p.split('>')[1].split('<')[0]
                     f_name = 1
                     if 'filename' in p:
-                        self.filen_ame = p.split('>')[1].split('<')[0]
+                        self.filen_ame = str(self.image_class) + '_' + p.split('>')[1].split('<')[0]
                         # print(self.filen_ame)
                         f_name = 0
 
@@ -147,6 +151,7 @@ class PascalVOC2coco(object):
         image['width'] = self.width
         image['id'] = self.num + 1
         image['file_name'] = self.filen_ame
+        image['image_class'] = self.image_class
         return image
 
     def categorie(self):
@@ -287,12 +292,14 @@ def dataset_split(tags, _via_image_id_list, images_path):
         _via_image_id_list = _via_image_id_list[int(0.9*len(_via_image_id_list)):]
     for i, xml in enumerate(_via_image_id_list):
         bb = _via_image_id_list
-        path = os.path.split(xml)[-1].replace("xml", "jpg")
-        image_path = images_path + path
+        path = os.path.split(xml)[-2]
+        path = path.split('\\')[-2]
+        image = os.path.split(xml)[-1].replace("xml", "jpg")
+        image_path = images_path + path + '_' + image
         dd[i] = image_path
     return bb, dd
 
-images_path = './FGVC2/'
+images_path = './FGVC_2/all_images/'
 train_img_out_path = './train_img'
 val_img_out_path = './val_img'
 test_img_out_path = './test_img'
@@ -300,29 +307,42 @@ if not (os.path.exists(train_img_out_path) and os.path.exists(val_img_out_path))
     os.mkdir(train_img_out_path)
     os.mkdir(val_img_out_path)
     os.mkdir(test_img_out_path)
-xml_file = glob.glob('./FGVC2/outputs/*.xml')
+# for i in range(14):
+#     isExists = os.path.exists('./FGVC_2/fgvc_images/' + str(i+1))
+#     if not isExists:
+#         os.makedirs('./FGVC_2/fgvc_images/' + str(i+1))
+
+
+# xml_file = glob.glob('./FGVC_2/images/*/*.jpg')
+# for i in xml_file:
+#     p = os.path.split(i)[-2]
+#     p = p.split('\\')[-1]
+#     j = int(p)
+#     if p == str(j):
+#         shutil.copy(i, './FGVC_2/fgvc_images/' + p + '/' + p + '_' + os.path.split(i)[-1])
+xml_file = glob.glob('./FGVC_2/images/*/outputs/*.xml')
 random.shuffle(xml_file)
 bb, dd = dataset_split('train', xml_file, images_path)
 bb1, dd1 = dataset_split('val', xml_file, images_path)
 bb2, dd2 = dataset_split('test', xml_file, images_path)
+# PascalVOC2coco(xml_file, 'total.json')
 PascalVOC2coco(bb, 'train.json')
-PascalVOC2coco(bb1, 'val.json')
+PascalVOC2coco(bb1, 'valid.json')
 PascalVOC2coco(bb2, 'test.json')
 for file in dd:
     imag = cv2.imread(dd[file])
-    imag = cv2.resize(imag, (84, 84), interpolation=cv2.INTER_AREA)
+    # imag = cv2.resize(imag, (84, 84), interpolation=cv2.INTER_AREA)
     # cv2.imshow('s', imag)
-    cv2.imwrite(dd[file], imag)
+    # cv2.imwrite(dd[file], imag)
     shutil.copy(dd[file], train_img_out_path)
 for file1 in dd1:
-    imag = cv2.imread(dd[file])
-    imag = cv2.resize(imag, (84, 84), interpolation=cv2.INTER_AREA)
-
-    cv2.imwrite(dd[file], imag)
+    # imag = cv2.imread(dd[file])
+    # imag = cv2.resize(imag, (84, 84), interpolation=cv2.INTER_AREA)
+    # cv2.imwrite(dd[file], imag)
     shutil.copy(dd1[file1], val_img_out_path)
 for file2 in dd2:
-    imag = cv2.imread(dd[file])
-    imag = cv2.resize(imag, (84, 84), interpolation=cv2.INTER_AREA)
+    # imag = cv2.imread(dd[file])
+    # imag = cv2.resize(imag, (84, 84), interpolation=cv2.INTER_AREA)
     # cv2.imshow('s', imag)
-    cv2.imwrite(dd[file], imag)
+    # cv2.imwrite(dd[file], imag)
     shutil.copy(dd2[file2], test_img_out_path)
